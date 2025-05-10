@@ -1,0 +1,12 @@
+# Achie-Image-Manipulator
+
+Planning to replicate Gimp in C -- might swap to C++ if i decide to try to learn i.
+
+Change Log
+Idea made 2025-5-4
+
+2025-5-10
+writing first few functions for pngs
+open_png written up to checking that the file header is correct
+next step is to parse the image width and height and then read the actual image data
+
