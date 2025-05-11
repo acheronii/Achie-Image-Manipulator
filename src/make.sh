@@ -1,3 +1,3 @@
 #!/bin/bash
-gcc -o aim *.c
+gcc -o aim *.c -lz
 

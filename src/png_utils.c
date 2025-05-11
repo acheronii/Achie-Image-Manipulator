@@ -25,6 +25,26 @@ static int invert_endianness(int in) {
 	return out;
 }
 
+// given the header and data for a chunk, and the chunk's crc, verifies the crc
+static int verify_crc(char* buffer, char* crc, int length) {
+	uint32_t actual_crc = crc32(0, Z_NULL, 0);
+	actual_crc = crc32(actual_crc, buffer, length);
+	// invert cuz machine is little endian but crc is big endian
+	actual_crc = invert_endianness(actual_crc);
+	return memcmp(&actual_crc, crc, 4);
+}
+
+static void init_png(png_image* png) {
+	png->data = NULL;
+	png->width = 0;
+	png->height = 0;
+	png->bit_depth = 0;
+    png->color_type = 0;
+    png->compression = 0;
+    png->filter = 0;
+    png->interlace = 0;
+}
+
 static int handle_next_chunk(FILE* file, png_image* png) {
 	
 	// get length
@@ -48,16 +68,35 @@ static int handle_next_chunk(FILE* file, png_image* png) {
 			perror("File may be corrupted, wrong length IHDR chunk");
 			return 0;
 		}
-		fread(&png->width, 4, 1, file);
+
+		char crc[4];
+		char data[13];
+		// read data and crc
+		fread(data, 1, 13, file);
+		fread(crc, 1, 4, file);
+		
+		// verify crc
+		unsigned char crc_buff[17];
+		memcpy(crc_buff, chunkTypeStr, 4);
+		memcpy(crc_buff+4, data, 13);
+		
+		if (verify_crc(crc_buff, crc, 17)) {
+			perror("IHDR CRC not valid");
+		}
+
+
+		// store the data
+		memcpy(&png->width, data, 4);
 		png->width = invert_endianness(png->width);
-		fread(&png->height, 4, 1, file);
+		memcpy(&png->height, data+4, 4);
 		png->height = invert_endianness(png->height);
-		fread(&png->bit_depth, 1, 1, file);
-		fread(&png->color_type, 1, 1, file);
-		fread(&png->compression, 1, 1, file);
-		fread(&png->filter, 1, 1, file);
-		fread(&png->interlace, 1, 1, file);
+		png->bit_depth = data[8];
+		png->color_type = data[9];
+		png->compression = data[10];
+		png->filter = data[11];
+		png->interlace = data[12];
 	}
+
 	// for PLTE chunk
 	else if (strncmp(chunkTypeStr, "PLTE", 4) == 0) {
 
@@ -73,6 +112,10 @@ static int handle_next_chunk(FILE* file, png_image* png) {
 			fread(png->data + png->size, 1, length, file);
 			png->size += length;
 		}
+		char crc[4];
+		fread(crc, 1, 4, file);
+		
+
 	}
 	// for IEND chunk
 	else if (strncmp(chunkTypeStr, "IEND", 4) == 0) {
@@ -83,13 +126,11 @@ static int handle_next_chunk(FILE* file, png_image* png) {
 		return 0;
 	}	
 	else {	
-		char dump[length];
-		fread(dump, 1, length, file);
+		char dump[length + 4];
+		fread(dump, 1, length + 4, file);
 		printf("unknown chunk: %s\n", chunkTypeStr);
+
 	}
-	// skip the CRC bytes
-	char crc[4];
-	fread(crc, 1, 4, file);
 	
 	return 1;
 }
@@ -121,8 +162,8 @@ int open_png(char* address, png_image* png) {
 	
 
 	// initiate data
-	png->data = NULL;
-	
+	init_png(png);
+
 	// handle all the chunks
 	int resp = 1;
 	int i = 0;
@@ -131,6 +172,7 @@ int open_png(char* address, png_image* png) {
 	}
 
 	fclose(file);
+	// print the information about the png
 	printf("width: %d\n", png->width);
 	printf("height: %d\n", png->height);
 	printf("png->bit_depth: %d\n", png->bit_depth);
@@ -141,7 +183,11 @@ int open_png(char* address, png_image* png) {
 	return 0;
 }
 
-// [O
+int save_png(char* address, png_image* png) {
+	
+}
+
+
 // cleans a png file
 void clean_png(png_image* png) {
 	free(png->data);
