@@ -5,8 +5,15 @@ Planning to replicate Gimp in C -- might swap to C++ if i decide to try to learn
 Change Log
 Idea made 2025-5-4
 
-2025-5-10
+2025-5-9
 writing first few functions for pngs
 open_png written up to checking that the file header is correct
-next step is to parse the image width and height and then read the actual image data
+
+2024-5-10
+Finished with most of the parsing of the png in open_png.
+can parse through all the chunks, extract data from header and end chunks and 
+identify the rest of the chunks. able to extract data from the IDAT chunk but 
+no way to decompress it atm
+Next step is to figure out how to decompress -- look at zlib
+
 
